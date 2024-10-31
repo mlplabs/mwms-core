@@ -22,7 +22,7 @@ func NewBarcodes(s *whs.Storage) *Barcodes {
 // Get returns a list of barcodes
 func (b *Barcodes) Get(ctx context.Context) ([]Barcode, error) {
 	items := make([]Barcode, 0)
-	sqlSel := fmt.Sprintf("SELECT id, name, barcode_type, owner_id FROM %s ORDER BY name ASC", tableBarcodes)
+	sqlSel := fmt.Sprintf("SELECT id, name, barcode_type, owner_id, owner_ref FROM %s ORDER BY name ASC", tableBarcodes)
 
 	rows, err := b.storage.Db.QueryContext(ctx, sqlSel)
 	if err != nil {
@@ -32,7 +32,7 @@ func (b *Barcodes) Get(ctx context.Context) ([]Barcode, error) {
 
 	for rows.Next() {
 		bc := Barcode{}
-		err = rows.Scan(&bc.Id, &bc.Name, &bc.Type, &bc.OwnerId)
+		err = rows.Scan(&bc.Id, &bc.Name, &bc.Type, &bc.OwnerId, &bc.OwnerRef)
 		items = append(items, bc)
 	}
 	return items, nil
@@ -52,7 +52,7 @@ func (b *Barcodes) GetItems(ctx context.Context, offset int, limit int) ([]Barco
 	args = append(args, limit)
 	args = append(args, offset)
 
-	sqlSel := fmt.Sprintf("SELECT id, name, barcode_type, owner_id FROM %s %s ORDER BY name ASC", tableBarcodes, sqlCond)
+	sqlSel := fmt.Sprintf("SELECT id, name, barcode_type, owner_id, owner_ref FROM %s %s ORDER BY name ASC", tableBarcodes, sqlCond)
 
 	rows, err := b.storage.Db.QueryContext(ctx, sqlSel+" LIMIT $1 OFFSET $2", args...)
 	if err != nil {
@@ -62,7 +62,7 @@ func (b *Barcodes) GetItems(ctx context.Context, offset int, limit int) ([]Barco
 
 	for rows.Next() {
 		bc := Barcode{}
-		err = rows.Scan(&bc.Id, &bc.Name, &bc.Type, &bc.OwnerId)
+		err = rows.Scan(&bc.Id, &bc.Name, &bc.Type, &bc.OwnerId, &bc.OwnerRef)
 		items = append(items, bc)
 	}
 
@@ -76,8 +76,8 @@ func (b *Barcodes) GetItems(ctx context.Context, offset int, limit int) ([]Barco
 
 func (b *Barcodes) Create(ctx context.Context, bc *Barcode) (int64, error) {
 	var insertId int64
-	sqlCreate := fmt.Sprintf("INSERT INTO %s (name, barcode_type, owner_id) VALUES ($1, $2, $3) RETURNING id", tableBarcodes)
-	err := b.storage.Db.QueryRowContext(ctx, sqlCreate, bc.Name, bc.Type, bc.OwnerId).Scan(&insertId)
+	sqlCreate := fmt.Sprintf("INSERT INTO %s (name, barcode_type, owner_id, owner_ref) VALUES ($1, $2, $3) RETURNING id", tableBarcodes)
+	err := b.storage.Db.QueryRowContext(ctx, sqlCreate, bc.Name, bc.Type, bc.OwnerId, bc.OwnerRef).Scan(&insertId)
 	if err != nil {
 		return insertId, err
 	}
@@ -85,8 +85,8 @@ func (b *Barcodes) Create(ctx context.Context, bc *Barcode) (int64, error) {
 }
 
 func (b *Barcodes) Update(ctx context.Context, bc *Barcode) (int64, error) {
-	sqlUpd := fmt.Sprintf("UPDATE %s SET name=$2, barcode_type=$3, owner_id=$4 WWHERE id=$1", tableBarcodes)
-	res, err := b.storage.Db.ExecContext(ctx, sqlUpd, bc.Id, bc.Name, bc.Type, bc.OwnerId)
+	sqlUpd := fmt.Sprintf("UPDATE %s SET name=$2, barcode_type=$3, owner_id=$4, owner_ref=$5 WWHERE id=$1", tableBarcodes)
+	res, err := b.storage.Db.ExecContext(ctx, sqlUpd, bc.Id, bc.Name, bc.Type, bc.OwnerId, bc.OwnerRef)
 	if err != nil {
 		return 0, err
 	}
@@ -115,10 +115,10 @@ func (b *Barcodes) Delete(ctx context.Context, itemId int64) error {
 }
 
 func (b *Barcodes) GetById(ctx context.Context, itemId int64) (*Barcode, error) {
-	sqlUsr := fmt.Sprintf("SELECT id, name, barcode_type, owner_id FROM %s WHERE id = $1", tableBarcodes)
+	sqlUsr := fmt.Sprintf("SELECT id, name, barcode_type, owner_id, owner_ref FROM %s WHERE id = $1", tableBarcodes)
 	row := b.storage.Db.QueryRowContext(ctx, sqlUsr, itemId)
 	bc := Barcode{}
-	err := row.Scan(&bc.Id, &bc.Name, &bc.Type, &bc.OwnerId)
+	err := row.Scan(&bc.Id, &bc.Name, &bc.Type, &bc.OwnerId, &bc.OwnerRef)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (b *Barcodes) GetById(ctx context.Context, itemId int64) (*Barcode, error) 
 
 func (b *Barcodes) FindByName(ctx context.Context, itemName string) ([]Barcode, error) {
 	items := make([]Barcode, 0)
-	sql := fmt.Sprintf("SELECT id, name, barcode_type, owner_id FROM %s WHERE name = $1", tableBarcodes)
+	sql := fmt.Sprintf("SELECT id, name, barcode_type, owner_id, owner_ref FROM %s WHERE name = $1", tableBarcodes)
 	rows, err := b.storage.Db.QueryContext(ctx, sql, itemName)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func (b *Barcodes) FindByName(ctx context.Context, itemName string) ([]Barcode, 
 	defer rows.Close()
 	for rows.Next() {
 		bc := Barcode{}
-		err = rows.Scan(&bc.Id, &bc.Name, &bc.Type, &bc.OwnerId)
+		err = rows.Scan(&bc.Id, &bc.Name, &bc.Type, &bc.OwnerId, &bc.OwnerRef)
 		if err != nil {
 			return nil, err
 		}
