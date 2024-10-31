@@ -2,7 +2,6 @@ package whs
 
 import (
 	"database/sql"
-	"fmt"
 )
 
 // SpecificSize структура весогабаритных характеристик (см/см3/кг)
@@ -82,21 +81,10 @@ var (
 	DefaultSuggestionLimit int = 10
 )
 
-func NewStorage(host, dbName, dbUser, dbPass string) *Storage {
-	s := Storage{}
-	var err error
-	connStr := fmt.Sprintf("host=%s dbname=%s user=%s password=%s sslmode=disable", host, dbName, dbUser, dbPass)
-	s.Db, err = sql.Open("postgres", connStr)
-	if err != nil {
-		return nil
+func NewStorage(db *sql.DB) *Storage {
+	return &Storage{
+		Db: db,
 	}
-
-	err = s.Db.Ping()
-	if err != nil {
-		return nil
-	}
-	s.dbUser = dbUser
-	return &s
 }
 
 func (s *Storage) GetDbUser() string {
