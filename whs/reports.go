@@ -3,7 +3,7 @@ package whs
 import (
 	"fmt"
 	"github.com/lib/pq"
-	"github.com/mlplabs/microwms-core/core"
+	"github.com/mlplabs/mwms-core/core"
 	"time"
 )
 
@@ -135,7 +135,7 @@ func (s *Storage) GetTurnovers(param TurnoversParams, offset, limit int) ([]Turn
 		err = rows.Scan(&docId, &docNum, &docDate, &item.Product.Id, &item.Product.Name, &item.Product.Manufacturer.Id, &item.Product.Manufacturer.Name, &item.Quantity)
 
 		doc := new(Document)
-		docItem,_ := doc.GetNewItem()
+		docItem, _ := doc.GetNewItem()
 		docItem.Id = int64(docId)
 		docItem.Number = docItem.GetNumber()
 		docItem.Date = docItem.GetDate(docDate)

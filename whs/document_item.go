@@ -3,7 +3,7 @@ package whs
 import (
 	"database/sql"
 	"fmt"
-	"github.com/mlplabs/microwms-core/core"
+	"github.com/mlplabs/mwms-core/core"
 	"time"
 )
 
@@ -17,11 +17,11 @@ type IDocumentItem interface {
 
 type DocumentItem struct {
 	document IDocument
-	Id       int64    `json:"id"`
-	Number   string   `json:"number"`
-	Date     string   `json:"date"`
-	Type     int      `json:"doc_type"`
-	WhsId    int64    `json:"whs_id"`
+	Id       int64         `json:"id"`
+	Number   string        `json:"number"`
+	Date     string        `json:"date"`
+	Type     int           `json:"doc_type"`
+	WhsId    int64         `json:"whs_id"`
 	Rows     []DocumentRow `json:"rows"`
 }
 
@@ -99,7 +99,7 @@ func (di *DocumentItem) GetDate(date time.Time) string {
 }
 
 func (di *DocumentItem) Store() (int64, int64, error) {
-	if di.Date == ""{
+	if di.Date == "" {
 		di.Date = time.Now().Format("2006-01-02")
 	}
 	if di.GetId() == 0 {

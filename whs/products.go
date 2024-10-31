@@ -2,7 +2,7 @@ package whs
 
 import (
 	"fmt"
-	"github.com/mlplabs/microwms-core/core"
+	"github.com/mlplabs/mwms-core/core"
 	"strings"
 )
 

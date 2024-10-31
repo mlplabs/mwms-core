@@ -3,7 +3,7 @@ package whs
 import (
 	"database/sql"
 	"fmt"
-	"github.com/mlplabs/microwms-core/core"
+	"github.com/mlplabs/mwms-core/core"
 )
 
 // Barcode barcode object
