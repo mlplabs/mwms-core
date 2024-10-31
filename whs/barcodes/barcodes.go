@@ -39,11 +39,11 @@ func (b *Barcodes) Get(ctx context.Context) ([]Barcode, error) {
 }
 
 // GetItems returns a list of barcodes
-func (b *Barcodes) GetItems(ctx context.Context, offset int, limit int) ([]Barcode, int64, error) {
+func (b *Barcodes) GetItems(ctx context.Context, offset int, limit int, ownerId int64, ownerRef string) ([]Barcode, int64, error) {
 	var totalCount int64
 	items := make([]Barcode, 0)
 
-	sqlCond := ""
+	sqlCond := "WHERE owner_id = $3 AND owner_ref = $4"
 	args := make([]any, 0)
 
 	if limit == 0 {
@@ -51,6 +51,8 @@ func (b *Barcodes) GetItems(ctx context.Context, offset int, limit int) ([]Barco
 	}
 	args = append(args, limit)
 	args = append(args, offset)
+	args = append(args, ownerId)
+	args = append(args, ownerRef)
 
 	sqlSel := fmt.Sprintf("SELECT id, name, barcode_type, owner_id, owner_ref FROM %s %s ORDER BY name ASC", tableBarcodes, sqlCond)
 
