@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/lib/pq"
 	"github.com/mlplabs/mwms-core/core"
+	"github.com/mlplabs/mwms-core/whs/manufacturers"
 	"time"
 )
 
@@ -30,7 +31,7 @@ func (s *Storage) GetRemainingProducts() ([]RemainingProductRow, error) {
 	for rows.Next() {
 		r := RemainingProductRow{}
 		r.Product = &ProductItem{}
-		r.Manufacturer = &ManufacturerItem{}
+		r.Manufacturer = &manufacturers.ManufacturerItem{}
 		r.Zone = &ZoneItem{}
 		r.Cell = &CellItem{}
 
@@ -69,7 +70,7 @@ func (s *Storage) GetRemainingProductsByIds(idsArray []int64) ([]RemainingProduc
 	for rows.Next() {
 		r := RemainingProductRow{}
 		r.Product = &ProductItem{}
-		r.Manufacturer = &ManufacturerItem{}
+		r.Manufacturer = &manufacturers.ManufacturerItem{}
 		r.Zone = &ZoneItem{}
 		r.Cell = &CellItem{}
 		err = rows.Scan(&r.Product.Id, &r.Product.Name, &r.Manufacturer.Id, &r.Manufacturer.Name, &r.Zone.Id, &r.Zone.Name, &r.Cell.Id, &r.Cell.Name, &r.Quantity)

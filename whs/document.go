@@ -3,6 +3,7 @@ package whs
 import (
 	"database/sql"
 	"fmt"
+	"github.com/mlplabs/mwms-core/whs/warehouses"
 	"time"
 )
 
@@ -22,13 +23,13 @@ type IDocument interface {
 
 // IDocStorage документ связан с движением товара
 type IDocStorage interface {
-	GetWhs() *WhsItem
+	GetWhs() *warehouses.WhsItem
 }
 
 type Document struct {
-	storage   *Storage
-	headTable string
-	rowsTable string
+	storage      *Storage
+	headTable    string
+	rowsTable    string
 	documentType int
 }
 
@@ -143,7 +144,6 @@ func (d *Document) GetById(id int64) (IDocumentItem, error) {
 
 	// Тут надо сделать выборку товаров для базового варианта документа на основе просто детальной талблицы getRowTable()
 
-
 	//sqlRows := fmt.Sprintf("SELECT st.row_id, st.prod_id, p.name, "+
 	//	"	p.manufacturer_id, COALESCE(m.name, '') AS manufacturer_name, "+
 	//	"	st.quantity, st.cell_id, COALESCE(c.name, '') AS cell_name "+
@@ -221,4 +221,3 @@ func (d *Document) GetNewItem() (*DocumentItem, error) {
 	item.Rows = make([]DocumentRow, 0)
 	return item, nil
 }
-

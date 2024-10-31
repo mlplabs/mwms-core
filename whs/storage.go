@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/lib/pq"
+	"github.com/mlplabs/mwms-core/whs/manufacturers"
+	"github.com/mlplabs/mwms-core/whs/users"
 )
 
 type docTables struct {
@@ -47,14 +49,14 @@ const (
 )
 
 const (
-	tableRefWhs            = "whs"
-	tableRefProducts       = "products"
-	tableRefManufacturers  = "manufacturers"
-	tableRefBarcodes       = "barcodes"
-	tableRefUsers          = "users"
-	tableRefZones          = "zones"
-	tableRefCells          = "cells"
-	tableDocReceiptHeaders = "receipt_headers"
+	tableRefWhs             = "whs"
+	tableRefProducts        = "products"
+	tableRefManufacturers   = "manufacturers"
+	tableRefBarcodes        = "barcodes"
+	tableRefUsers           = "users"
+	tableRefZones           = "zones"
+	tableRefCells           = "cells"
+	tableDocReceiptHeaders  = "receipt_headers"
 	tableDocShipmentHeaders = "shipment_headers"
 )
 
@@ -63,10 +65,14 @@ type Storage struct {
 	dbUser string
 }
 
+func (s *Storage) GetUsersCatalog() *users.Users {
+	return users.NewUsers(s)
+}
+
 type TurnoversProductRow struct {
-	Doc      IDocumentItem     `json:"doc"`
-	Product  *ProductItem `json:"product"`
-	Quantity int          `json:"quantity"`
+	Doc      IDocumentItem `json:"doc"`
+	Product  *ProductItem  `json:"product"`
+	Quantity int           `json:"quantity"`
 }
 
 type TurnoversParams struct {
@@ -76,11 +82,11 @@ type TurnoversParams struct {
 }
 
 type RemainingProductRow struct {
-	Product      *ProductItem      `json:"product"`
-	Manufacturer *ManufacturerItem `json:"manufacturer"`
-	Zone         *ZoneItem         `json:"zone"`
-	Cell         *CellItem         `json:"cell"`
-	Quantity     int               `json:"quantity"`
+	Product      *ProductItem                    `json:"product"`
+	Manufacturer *manufacturers.ManufacturerItem `json:"manufacturer"`
+	Zone         *ZoneItem                       `json:"zone"`
+	Cell         *CellItem                       `json:"cell"`
+	Quantity     int                             `json:"quantity"`
 }
 
 var (
@@ -104,34 +110,9 @@ func (s *Storage) Init(host, dbName, dbUser, dbPass string) error {
 	return nil
 }
 
-func (s *Storage) GetCatalogByName(catalogName string) (ICatalog, error) {
-	switch catalogName {
-	case "whs":
-		return s.GetWhs(), nil
-	case "zones":
-		return s.GetZone(), nil
-	case "users":
-		return s.GetUser(), nil
-	case "products":
-		return s.GetProduct(), nil
-	case "manufacturers":
-		return s.GetManufacturer(), nil
-	case "barcodes":
-		return s.GetBarcode(), nil
-	case "cells":
-		return s.GetCell(), nil
-	default:
-		return new(Catalog), fmt.Errorf("catalog %s not found")
-	}
+func (s *Storage) GetDbUser() string {
+	return s.dbUser
 }
-
-//func (s *Storage) GetDocument(docTableName docTables) *Document {
-//	return &Document{
-//		HeadersName: docTableName.Headers,
-//		ItemsName:   docTableName.Items,
-//		Db:          s.Db,
-//	}
-//}
 
 func (s *Storage) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return s.Db.Query(query, args...)

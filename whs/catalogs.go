@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+// OLD
+
 // ICatalog Интерфейс объекта справочника
 //
 //	GetCatalogMetadata пока только для принадлежности
@@ -147,7 +149,6 @@ func (c *Catalog) GetItemsByField(offset int, limit int, fieldName string, val i
 	}
 	return items, count, nil
 }
-
 
 // FindById returns item by internal id
 func (c *Catalog) FindById(itemId int64) (ICatalogItem, error) {

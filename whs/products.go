@@ -3,6 +3,8 @@ package whs
 import (
 	"fmt"
 	"github.com/mlplabs/mwms-core/core"
+	"github.com/mlplabs/mwms-core/whs/barcodes"
+	"github.com/mlplabs/mwms-core/whs/manufacturers"
 	"strings"
 )
 
@@ -13,10 +15,10 @@ type Product struct {
 
 type ProductItem struct {
 	CatalogItem
-	ItemNumber   string           `json:"item_number"`
-	Barcodes     []BarcodeItem    `json:"barcodes"`
-	Manufacturer ManufacturerItem `json:"manufacturer"`
-	Size         SpecificSize     `json:"size"`
+	ItemNumber   string                         `json:"item_number"`
+	Barcodes     []barcodes.BarcodeItem         `json:"barcodes"`
+	Manufacturer manufacturers.ManufacturerItem `json:"manufacturer"`
+	Size         SpecificSize                   `json:"size"`
 }
 
 func (s *Storage) GetProduct() *Product {
@@ -139,7 +141,7 @@ func (p *Product) FindByBarcode(barcodeStr string) ([]ProductItem, error) {
 func (p *Product) GetNewItem() (*ProductItem, error) {
 	item := new(ProductItem)
 	item.setCatalog(p)
-	item.Barcodes = make([]BarcodeItem, 0)
+	item.Barcodes = make([]barcodes.BarcodeItem, 0)
 	return item, nil
 }
 
@@ -181,7 +183,7 @@ func (p *Product) GetSuggestion(text string, limit int) ([]Suggestion, error) {
 }
 
 // GetBarcodes returns a list of product barcodes
-func (pi *ProductItem) GetBarcodes(productId int64) ([]BarcodeItem, error) {
+func (pi *ProductItem) GetBarcodes(productId int64) ([]barcodes.BarcodeItem, error) {
 	catBc := pi.getStorage().GetBarcode()
 	return catBc.FindByOwnerId(productId)
 }
