@@ -3,13 +3,7 @@ package whs
 import (
 	"database/sql"
 	"fmt"
-	"github.com/mlplabs/mwms-core/whs/users"
 )
-
-type docTables struct {
-	Headers string
-	Items   string
-}
 
 // SpecificSize структура весогабаритных характеристик (см/см3/кг)
 // полный объем: length * width * height
@@ -61,10 +55,6 @@ const (
 type Storage struct {
 	Db     *sql.DB
 	dbUser string
-}
-
-func (s *Storage) GetUsersCatalog() *users.Users {
-	return users.NewUsers(s)
 }
 
 //type TurnoversProductRow struct {
