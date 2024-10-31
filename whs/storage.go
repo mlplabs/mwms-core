@@ -82,20 +82,21 @@ var (
 	DefaultSuggestionLimit int = 10
 )
 
-func (s *Storage) Init(host, dbName, dbUser, dbPass string) error {
+func NewStorage(host, dbName, dbUser, dbPass string) *Storage {
+	s := Storage{}
 	var err error
 	connStr := fmt.Sprintf("host=%s dbname=%s user=%s password=%s sslmode=disable", host, dbName, dbUser, dbPass)
 	s.Db, err = sql.Open("postgres", connStr)
 	if err != nil {
-		return err
+		return nil
 	}
 
 	err = s.Db.Ping()
 	if err != nil {
-		return err
+		return nil
 	}
 	s.dbUser = dbUser
-	return nil
+	return &s
 }
 
 func (s *Storage) GetDbUser() string {
