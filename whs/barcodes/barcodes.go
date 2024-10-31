@@ -87,7 +87,7 @@ func (b *Barcodes) Create(ctx context.Context, bc *Barcode) (int64, error) {
 }
 
 func (b *Barcodes) Update(ctx context.Context, bc *Barcode) (int64, error) {
-	sqlUpd := fmt.Sprintf("UPDATE %s SET name=$2, barcode_type=$3, owner_id=$4, owner_ref=$5 WWHERE id=$1", tableBarcodes)
+	sqlUpd := fmt.Sprintf("UPDATE %s SET name=$2, barcode_type=$3, owner_id=$4, owner_ref=$5 WHERE id=$1", tableBarcodes)
 	res, err := b.storage.Db.ExecContext(ctx, sqlUpd, bc.Id, bc.Name, bc.Type, bc.OwnerId, bc.OwnerRef)
 	if err != nil {
 		return 0, err
