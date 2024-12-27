@@ -1,4 +1,4 @@
-package suggestion
+package model
 
 type Suggestion struct {
 	Id    int64  `json:"id"`

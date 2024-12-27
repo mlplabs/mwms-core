@@ -1,4 +1,4 @@
-package zones
+package model
 
 type Zone struct {
 	Id      int64  `json:"id"`

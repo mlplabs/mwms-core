@@ -1,4 +1,17 @@
-package barcodes
+package model
+
+const (
+	BarcodeTypeUnknown = iota
+	BarcodeTypeEAN13
+	BarcodeTypeEAN8
+	BarcodeTypeEAN14
+	BarcodeTypeCode128
+)
+
+type Type struct {
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
+}
 
 type Barcode struct {
 	Id       int64  `json:"id"`

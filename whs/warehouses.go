@@ -1,27 +1,26 @@
-package warehouses
+package whs
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"github.com/lib/pq"
-	"github.com/mlplabs/mwms-core/whs"
-	"github.com/mlplabs/mwms-core/whs/suggestion"
+	"github.com/mlplabs/mwms-core/whs/model"
 )
 
 const tableWarehouses = "warehouses"
 
 type Warehouses struct {
-	storage *whs.Storage
+	storage *Storage
 }
 
-func NewWarehouses(s *whs.Storage) *Warehouses {
+func NewWarehouses(s *Storage) *Warehouses {
 	return &Warehouses{storage: s}
 }
 
 // Get returns a list items without limit
-func (w *Warehouses) Get(ctx context.Context) ([]Warehouse, error) {
-	items := make([]Warehouse, 0)
+func (w *Warehouses) Get(ctx context.Context) ([]model.Warehouse, error) {
+	items := make([]model.Warehouse, 0)
 	sqlSel := fmt.Sprintf("SELECT id, name FROM %s ORDER BY name ASC", tableWarehouses)
 	rows, err := w.storage.Db.QueryContext(ctx, sqlSel)
 	if err != nil {
@@ -30,7 +29,7 @@ func (w *Warehouses) Get(ctx context.Context) ([]Warehouse, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		item := Warehouse{}
+		item := model.Warehouse{}
 		err = rows.Scan(&item.Id, &item.Name)
 		items = append(items, item)
 	}
@@ -38,14 +37,14 @@ func (w *Warehouses) Get(ctx context.Context) ([]Warehouse, error) {
 }
 
 // GetItems returns a list items of catalog
-func (w *Warehouses) GetItems(ctx context.Context, offset int, limit int) ([]Warehouse, int, error) {
-	var totalCount int
-	items := make([]Warehouse, 0)
+func (w *Warehouses) GetItems(ctx context.Context, offset int, limit int) ([]model.Warehouse, int64, error) {
+	var totalCount int64
+	items := make([]model.Warehouse, 0)
 	sqlCond := ""
 	args := make([]any, 0)
 
 	if limit == 0 {
-		limit = whs.DefaultRowsLimit
+		limit = DefaultRowsLimit
 	}
 	args = append(args, limit)
 	args = append(args, offset)
@@ -59,7 +58,7 @@ func (w *Warehouses) GetItems(ctx context.Context, offset int, limit int) ([]War
 	defer rows.Close()
 
 	for rows.Next() {
-		item := Warehouse{}
+		item := model.Warehouse{}
 		err = rows.Scan(&item.Id, &item.Name)
 		items = append(items, item)
 	}
@@ -72,7 +71,7 @@ func (w *Warehouses) GetItems(ctx context.Context, offset int, limit int) ([]War
 	return items, totalCount, nil
 }
 
-func (w *Warehouses) Create(ctx context.Context, whs *Warehouse) (int64, error) {
+func (w *Warehouses) Create(ctx context.Context, whs *model.Warehouse) (int64, error) {
 	var insertId int64
 
 	tx, err := w.storage.Db.Begin()
@@ -113,7 +112,7 @@ func (w *Warehouses) Create(ctx context.Context, whs *Warehouse) (int64, error) 
 	return insertId, nil
 }
 
-func (w *Warehouses) Update(ctx context.Context, whs *Warehouse) (int64, error) {
+func (w *Warehouses) Update(ctx context.Context, whs *model.Warehouse) (int64, error) {
 	sqlUpd := fmt.Sprintf("UPDATE %s SET name=$2 WHERE id=$1", tableWarehouses)
 	res, err := w.storage.Db.ExecContext(ctx, sqlUpd, whs.Id, whs.Name)
 	if err != nil {
@@ -145,20 +144,20 @@ func (w *Warehouses) Delete(ctx context.Context, itemId int64) error {
 }
 
 // GetById returns a warehouse object by id
-func (w *Warehouses) GetById(ctx context.Context, itemId int64) (Warehouse, error) {
-	item := Warehouse{}
+func (w *Warehouses) GetById(ctx context.Context, itemId int64) (*model.Warehouse, error) {
+	item := model.Warehouse{}
 	sqlWhs := fmt.Sprintf("SELECT id, name, address FROM %s WHERE id = $1", tableWarehouses)
 	row := w.storage.Db.QueryRowContext(ctx, sqlWhs, itemId)
 
 	err := row.Scan(&item.Id, &item.Name, &item.Address)
 	if err != nil {
-		return item, err
+		return &item, err
 	}
-	return item, nil
+	return &item, nil
 }
 
-func (w *Warehouses) FindByName(ctx context.Context, itemName string) ([]Warehouse, error) {
-	items := make([]Warehouse, 0)
+func (w *Warehouses) FindByName(ctx context.Context, itemName string) ([]model.Warehouse, error) {
+	items := make([]model.Warehouse, 0)
 	sql := fmt.Sprintf("SELECT id, name FROM %s WHERE name = $1", tableWarehouses)
 	rows, err := w.storage.Db.QueryContext(ctx, sql, itemName)
 	if err != nil {
@@ -166,7 +165,7 @@ func (w *Warehouses) FindByName(ctx context.Context, itemName string) ([]Warehou
 	}
 	defer rows.Close()
 	for rows.Next() {
-		item := Warehouse{}
+		item := model.Warehouse{}
 		err = rows.Scan(&item.Id, &item.Name)
 		if err != nil {
 			return nil, err
@@ -176,10 +175,10 @@ func (w *Warehouses) FindByName(ctx context.Context, itemName string) ([]Warehou
 	return items, nil
 }
 
-func (w *Warehouses) Suggest(ctx context.Context, text string, limit int) ([]suggestion.Suggestion, error) {
-	retVal := make([]suggestion.Suggestion, 0)
+func (w *Warehouses) Suggest(ctx context.Context, text string, limit int) ([]model.Suggestion, error) {
+	retVal := make([]model.Suggestion, 0)
 	if limit == 0 {
-		limit = whs.DefaultSuggestionLimit
+		limit = DefaultSuggestionLimit
 	}
 
 	sqlSel := fmt.Sprintf("SELECT id, name FROM %s WHERE name ILIKE $1 LIMIT $2", tableWarehouses)
@@ -189,7 +188,7 @@ func (w *Warehouses) Suggest(ctx context.Context, text string, limit int) ([]sug
 	}
 	defer rows.Close()
 	for rows.Next() {
-		item := suggestion.Suggestion{}
+		item := model.Suggestion{}
 		err := rows.Scan(&item.Id, &item.Val)
 		if err != nil {
 			return retVal, err

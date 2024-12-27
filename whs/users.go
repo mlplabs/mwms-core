@@ -1,27 +1,26 @@
-package users
+package whs
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"github.com/lib/pq"
-	"github.com/mlplabs/mwms-core/whs"
-	"github.com/mlplabs/mwms-core/whs/suggestion"
+	"github.com/mlplabs/mwms-core/whs/model"
 )
 
 const tableUsers = "users"
 
 type Users struct {
-	storage *whs.Storage
+	storage *Storage
 }
 
-func NewUsers(s *whs.Storage) *Users {
+func NewUsers(s *Storage) *Users {
 	return &Users{storage: s}
 }
 
 // Get returns a list items without limit
-func (u *Users) Get(ctx context.Context) ([]User, error) {
-	users := make([]User, 0)
+func (u *Users) Get(ctx context.Context) ([]model.User, error) {
+	users := make([]model.User, 0)
 	sqlSel := fmt.Sprintf("SELECT id, name FROM %s ORDER BY name ASC", tableUsers)
 	rows, err := u.storage.Db.QueryContext(ctx, sqlSel)
 	if err != nil {
@@ -30,7 +29,7 @@ func (u *Users) Get(ctx context.Context) ([]User, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		usr := User{}
+		usr := model.User{}
 		err = rows.Scan(&usr.Id, &usr.Name)
 		users = append(users, usr)
 	}
@@ -38,14 +37,14 @@ func (u *Users) Get(ctx context.Context) ([]User, error) {
 }
 
 // GetItems returns a list items of catalog with limit & offset
-func (u *Users) GetItems(ctx context.Context, offset int, limit int) ([]User, int64, error) {
+func (u *Users) GetItems(ctx context.Context, offset int, limit int) ([]model.User, int64, error) {
 	var totalCount int64
-	users := make([]User, 0)
+	users := make([]model.User, 0)
 	sqlCond := ""
 	args := make([]any, 0)
 
 	if limit == 0 {
-		limit = whs.DefaultRowsLimit
+		limit = DefaultRowsLimit
 	}
 	args = append(args, limit)
 	args = append(args, offset)
@@ -59,7 +58,7 @@ func (u *Users) GetItems(ctx context.Context, offset int, limit int) ([]User, in
 	defer rows.Close()
 
 	for rows.Next() {
-		usr := User{}
+		usr := model.User{}
 		err = rows.Scan(&usr.Id, &usr.Name)
 		users = append(users, usr)
 	}
@@ -72,14 +71,14 @@ func (u *Users) GetItems(ctx context.Context, offset int, limit int) ([]User, in
 	return users, totalCount, nil
 }
 
-func (u *Users) Create(ctx context.Context, user *User) (int64, error) {
+func (u *Users) Create(ctx context.Context, user *model.User) (int64, error) {
 	var insertId int64
 	sqlCreate := fmt.Sprintf("INSERT INTO %s (name) VALUES ($1) RETURNING id", tableUsers)
 	err := u.storage.Db.QueryRowContext(ctx, sqlCreate, user.Name).Scan(&insertId)
 	return insertId, err
 }
 
-func (u *Users) Update(ctx context.Context, user *User) (int64, error) {
+func (u *Users) Update(ctx context.Context, user *model.User) (int64, error) {
 	sqlUpd := fmt.Sprintf("UPDATE %s SET name=$2 WHERE id=$1", tableUsers)
 	res, err := u.storage.Db.ExecContext(ctx, sqlUpd, user.Id, user.Name)
 	if err != nil {
@@ -109,10 +108,10 @@ func (u *Users) Delete(ctx context.Context, itemId int64) error {
 	return nil
 }
 
-func (u *Users) GetById(ctx context.Context, itemId int64) (*User, error) {
+func (u *Users) GetById(ctx context.Context, itemId int64) (*model.User, error) {
 	sqlUsr := fmt.Sprintf("SELECT id, name FROM %s WHERE id = $1", tableUsers)
 	row := u.storage.Db.QueryRowContext(ctx, sqlUsr, itemId)
-	newItem := User{}
+	newItem := model.User{}
 	err := row.Scan(&newItem.Id, &newItem.Name)
 	if err != nil {
 		return nil, err
@@ -120,8 +119,8 @@ func (u *Users) GetById(ctx context.Context, itemId int64) (*User, error) {
 	return &newItem, nil
 }
 
-func (u *Users) FindByName(ctx context.Context, itemName string) ([]User, error) {
-	users := make([]User, 0)
+func (u *Users) FindByName(ctx context.Context, itemName string) ([]model.User, error) {
+	users := make([]model.User, 0)
 	sql := fmt.Sprintf("SELECT id, name FROM %s WHERE name = $1", tableUsers)
 	rows, err := u.storage.Db.QueryContext(ctx, sql, itemName)
 	if err != nil {
@@ -129,7 +128,7 @@ func (u *Users) FindByName(ctx context.Context, itemName string) ([]User, error)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		usr := User{}
+		usr := model.User{}
 		err = rows.Scan(&usr.Id, &usr.Name)
 		if err != nil {
 			return nil, err
@@ -139,10 +138,10 @@ func (u *Users) FindByName(ctx context.Context, itemName string) ([]User, error)
 	return users, nil
 }
 
-func (u *Users) Suggest(ctx context.Context, text string, limit int) ([]suggestion.Suggestion, error) {
-	retVal := make([]suggestion.Suggestion, 0)
+func (u *Users) Suggest(ctx context.Context, text string, limit int) ([]model.Suggestion, error) {
+	retVal := make([]model.Suggestion, 0)
 	if limit == 0 {
-		limit = whs.DefaultSuggestionLimit
+		limit = DefaultSuggestionLimit
 	}
 
 	sqlSel := fmt.Sprintf("SELECT id, name FROM %s WHERE name ILIKE $1 LIMIT $2", tableUsers)
@@ -152,7 +151,7 @@ func (u *Users) Suggest(ctx context.Context, text string, limit int) ([]suggesti
 	}
 	defer rows.Close()
 	for rows.Next() {
-		item := suggestion.Suggestion{}
+		item := model.Suggestion{}
 		err := rows.Scan(&item.Id, &item.Val)
 		if err != nil {
 			return retVal, err

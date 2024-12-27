@@ -1,6 +1,6 @@
-package products
+package model
 
-type Product struct {
+type Manufacturer struct {
 	Id   int64  `json:"id"`
 	Name string `json:"name"`
 }

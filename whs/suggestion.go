@@ -1,23 +1,23 @@
-package suggestion
+package whs
 
 import (
 	"context"
 	"fmt"
-	"github.com/mlplabs/mwms-core/whs"
+	"github.com/mlplabs/mwms-core/whs/model"
 )
 
 type Suggestions struct {
-	storage *whs.Storage
+	storage *Storage
 }
 
-func NewSuggestions(s *whs.Storage) *Suggestions {
+func NewSuggestions(s *Storage) *Suggestions {
 	return &Suggestions{storage: s}
 }
 
-func (s *Suggestions) GetSuggestion(ctx context.Context, refName string, text string, limit int) ([]Suggestion, error) {
-	retVal := make([]Suggestion, 0)
+func (s *Suggestions) GetSuggestion(ctx context.Context, refName string, text string, limit int) ([]model.Suggestion, error) {
+	retVal := make([]model.Suggestion, 0)
 	if limit == 0 {
-		limit = whs.DefaultSuggestionLimit
+		limit = DefaultSuggestionLimit
 	}
 
 	sqlSel := fmt.Sprintf("SELECT id, name FROM %s WHERE name ILIKE $1 LIMIT $2", refName)
@@ -27,7 +27,7 @@ func (s *Suggestions) GetSuggestion(ctx context.Context, refName string, text st
 	}
 	defer rows.Close()
 	for rows.Next() {
-		item := Suggestion{}
+		item := model.Suggestion{}
 		err := rows.Scan(&item.Id, &item.Val)
 		if err != nil {
 			return retVal, err
