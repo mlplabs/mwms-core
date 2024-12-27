@@ -184,8 +184,8 @@ func (b *Barcodes) FindByName(ctx context.Context, itemName string) ([]model.Bar
 // FindByOwnerId returns a list of barcodes for the product (owner)
 func (b *Barcodes) FindByOwnerId(ctx context.Context, ownerId int64, ownerRef string) ([]model.Barcode, error) {
 	retBc := make([]model.Barcode, 0)
-	sql := fmt.Sprintf("SELECT id, name, barcode_type, owner_id FROM %s WHERE owner_id = $1 AND owner_red=$2", tableBarcodes)
-	rows, err := b.storage.Db.QueryContext(ctx, sql, ownerId, ownerRef)
+	sqlSel := `SELECT b.id, b.name, b.barcode_type, b.owner_id FROM barcodes b WHERE b.owner_id = $1 AND b.owner_ref = $2`
+	rows, err := b.storage.Db.QueryContext(ctx, sqlSel, ownerId, ownerRef)
 	if err != nil {
 		return nil, err
 	}
@@ -225,12 +225,12 @@ func (b *Barcodes) Suggest(ctx context.Context, text string, limit int) ([]model
 	return retVal, err
 }
 
-func (b *Barcodes) GetBarcodeTypes(ctx context.Context) ([]model.Type, error) {
-	bc := make([]model.Type, 0)
-	bc = append(bc, model.Type{Id: BarcodeTypeUnknown, Name: "-"})
-	bc = append(bc, model.Type{Id: BarcodeTypeEAN13, Name: "EAN13"})
-	bc = append(bc, model.Type{Id: BarcodeTypeEAN8, Name: "EAN8"})
-	bc = append(bc, model.Type{Id: BarcodeTypeEAN14, Name: "EAN14"})
-	bc = append(bc, model.Type{Id: BarcodeTypeCode128, Name: "CODE128"})
+func (b *Barcodes) GetBarcodeTypes(ctx context.Context) ([]model.BarcodeType, error) {
+	bc := make([]model.BarcodeType, 0)
+	bc = append(bc, model.BarcodeType{Id: BarcodeTypeUnknown, Name: "-"})
+	bc = append(bc, model.BarcodeType{Id: BarcodeTypeEAN13, Name: "EAN13"})
+	bc = append(bc, model.BarcodeType{Id: BarcodeTypeEAN8, Name: "EAN8"})
+	bc = append(bc, model.BarcodeType{Id: BarcodeTypeEAN14, Name: "EAN14"})
+	bc = append(bc, model.BarcodeType{Id: BarcodeTypeCode128, Name: "CODE128"})
 	return bc, nil
 }

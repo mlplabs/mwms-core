@@ -29,9 +29,10 @@ func (s *WhsStorage) GetRow(ctx context.Context, row *model.RowStorage, tx *sql.
 			return 0, err
 		}
 	}
-
+	dGetId := 0
+	dGetType := 0
 	sqlInsert := fmt.Sprintf("INSERT INTO storage%d (doc_id, doc_type, zone_id, cell_id, row_id, prod_id, quantity) VALUES ($1, $2, $3, $4)", row.CellSrc.WhsId)
-	_, err = tx.ExecContext(ctx, sqlInsert, d.GetId(), d.GetType(), row.CellSrc.ZoneId, row.CellSrc.Id, row.RowId, row.Product.Id, -1*row.Quantity)
+	_, err = tx.ExecContext(ctx, sqlInsert, dGetId, dGetType, row.CellSrc.ZoneId, row.CellSrc.Id, row.RowId, row.Product.Id, -1*row.Quantity)
 	if err != nil {
 		return 0, err
 	}
@@ -67,11 +68,14 @@ func (s *WhsStorage) GetRow(ctx context.Context, row *model.RowStorage, tx *sql.
 func (s *WhsStorage) PutRow(ctx context.Context, row *model.RowStorage, tx *sql.Tx) (int, error) {
 	var err error
 
+	// TODO:
+	dGetId := 0
+	dGetType := 0
 	sqlIns := fmt.Sprintf("INSERT INTO storage%d (doc_id, doc_type, zone_id, cell_id, row_id, prod_id, quantity) VALUES ($1, $2, $3, $4, $5, $6, $7)", row.CellDst.WhsId)
 	if tx != nil {
-		_, err = tx.ExecContext(ctx, sqlIns, d.GetId(), d.GetType(), row.CellDst.ZoneId, row.CellDst.Id, row.RowId, row.Product.Id, row.Quantity)
+		_, err = tx.ExecContext(ctx, sqlIns, dGetId, dGetType, row.CellDst.ZoneId, row.CellDst.Id, row.RowId, row.Product.Id, row.Quantity)
 	} else {
-		_, err = s.storage.Db.ExecContext(ctx, sqlIns, d.GetId(), d.GetType(), row.CellDst.ZoneId, row.CellDst.Id, row.RowId, row.Product.Id, row.Quantity)
+		_, err = s.storage.Db.ExecContext(ctx, sqlIns, dGetId, dGetType, row.CellDst.ZoneId, row.CellDst.Id, row.RowId, row.Product.Id, row.Quantity)
 	}
 	if err != nil {
 		return 0, err

@@ -114,10 +114,13 @@ func (u *Products) Delete(ctx context.Context, itemId int64) error {
 }
 
 func (u *Products) GetById(ctx context.Context, itemId int64) (*model.Product, error) {
-	sqlSel := `SELECT id, name FROM products WHERE id = $1`
+	sqlSel := `SELECT p.id, p.name, p.item_number, p.manufacturer_id, coalesce(m.name, '') as manufacturer_name 
+				FROM products p 
+				LEFT JOIN public.manufacturers m on m.id = p.manufacturer_id
+				WHERE p.id = $1`
 	row := u.storage.Db.QueryRowContext(ctx, sqlSel, itemId)
-	newItem := model.Product{}
-	err := row.Scan(&newItem.Id, &newItem.Name)
+	newItem := model.Product{Manufacturer: model.Manufacturer{}}
+	err := row.Scan(&newItem.Id, &newItem.Name, &newItem.ItemNumber, &newItem.Manufacturer.Id, &newItem.Manufacturer.Name)
 	if err != nil {
 		return nil, err
 	}

@@ -8,7 +8,7 @@ const (
 	BarcodeTypeCode128
 )
 
-type Type struct {
+type BarcodeType struct {
 	Id   int64  `json:"id"`
 	Name string `json:"name"`
 }
