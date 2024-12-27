@@ -5,4 +5,5 @@ type Product struct {
 	Name         string       `json:"name"`
 	ItemNumber   string       `json:"item_number"`
 	Manufacturer Manufacturer `json:"manufacturer"`
+	Barcodes     []Barcode    `json:"barcodes"`
 }
