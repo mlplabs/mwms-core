@@ -40,9 +40,13 @@ func (u *Products) Get(ctx context.Context) ([]model.Product, error) {
 }
 
 // GetItems returns a list items of catalog with limit & offset
-func (u *Products) GetItems(ctx context.Context, offset int, limit int) ([]model.Product, int64, error) {
+func (u *Products) GetItems(ctx context.Context, offset int, limit int, search string) ([]model.Product, int64, error) {
 	var totalCount int64
+	var sqlCond string
 	items := make([]model.Product, 0)
+	if search != "" {
+		sqlCond = "WHERE p.name ILIKE '%" + search + "%' OR m.name ILIKE '" + search + "%' OR item_number ILIKE '" + search + "%'"
+	}
 	args := make([]any, 0)
 
 	if limit == 0 {
@@ -50,11 +54,12 @@ func (u *Products) GetItems(ctx context.Context, offset int, limit int) ([]model
 	}
 	args = append(args, limit)
 	args = append(args, offset)
-	query := `SELECT p.id, p.name, p.item_number, p.manufacturer_id, coalesce(m.name, '') as manufacturer_name
-					FROM products p
-					LEFT JOIN manufacturers m ON p.manufacturer_id = m.id
-					ORDER BY p.name ASC`
-	sqlSel := fmt.Sprintf(query)
+	query := "SELECT p.id, p.name, p.item_number, p.manufacturer_id, coalesce(m.name, '') as manufacturer_name " +
+		"	FROM products p " +
+		"   LEFT JOIN manufacturers m ON p.manufacturer_id = m.id" +
+		"   %s " +
+		"	ORDER BY p.name ASC"
+	sqlSel := fmt.Sprintf(query, sqlCond)
 
 	rows, err := u.storage.Db.QueryContext(ctx, sqlSel+" LIMIT $1 OFFSET $2", args...)
 	if err != nil {

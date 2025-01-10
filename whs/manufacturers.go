@@ -35,10 +35,13 @@ func (m *Manufacturers) Get(ctx context.Context) ([]model.Manufacturer, error) {
 	return items, nil
 }
 
-func (m *Manufacturers) GetItems(ctx context.Context, offset int, limit int) ([]model.Manufacturer, int64, error) {
+func (m *Manufacturers) GetItems(ctx context.Context, offset int, limit int, search string) ([]model.Manufacturer, int64, error) {
 	var totalCount int64
+	var sqlCond string
 	items := make([]model.Manufacturer, 0)
-	sqlCond := ""
+	if search != "" {
+		sqlCond = "WHERE name ILIKE '" + search + "%'"
+	}
 	args := make([]any, 0)
 
 	if limit == 0 {
