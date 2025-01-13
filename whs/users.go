@@ -11,18 +11,18 @@ import (
 const tableUsers = "users"
 
 type Users struct {
-	storage *Storage
+	wms *Wms
 }
 
-func NewUsers(s *Storage) *Users {
-	return &Users{storage: s}
+func NewUsers(s *Wms) *Users {
+	return &Users{wms: s}
 }
 
 // Get returns a list items without limit
 func (u *Users) Get(ctx context.Context) ([]model.User, error) {
 	users := make([]model.User, 0)
 	sqlSel := fmt.Sprintf("SELECT id, name FROM %s ORDER BY name ASC", tableUsers)
-	rows, err := u.storage.Db.QueryContext(ctx, sqlSel)
+	rows, err := u.wms.Db.QueryContext(ctx, sqlSel)
 	if err != nil {
 		return users, err
 	}
@@ -51,7 +51,7 @@ func (u *Users) GetItems(ctx context.Context, offset int, limit int) ([]model.Us
 
 	sqlSel := fmt.Sprintf("SELECT id, name FROM %s %s ORDER BY name ASC", tableUsers, sqlCond)
 
-	rows, err := u.storage.Db.QueryContext(ctx, sqlSel+" LIMIT $1 OFFSET $2", args...)
+	rows, err := u.wms.Db.QueryContext(ctx, sqlSel+" LIMIT $1 OFFSET $2", args...)
 	if err != nil {
 		return users, totalCount, err
 	}
@@ -64,7 +64,7 @@ func (u *Users) GetItems(ctx context.Context, offset int, limit int) ([]model.Us
 	}
 
 	sqlCount := fmt.Sprintf("SELECT COUNT(*) as count FROM ( %s ) sub", sqlSel)
-	err = u.storage.Db.QueryRowContext(ctx, sqlCount).Scan(&totalCount)
+	err = u.wms.Db.QueryRowContext(ctx, sqlCount).Scan(&totalCount)
 	if err != nil {
 		return users, totalCount, err
 	}
@@ -74,13 +74,13 @@ func (u *Users) GetItems(ctx context.Context, offset int, limit int) ([]model.Us
 func (u *Users) Create(ctx context.Context, user *model.User) (int64, error) {
 	var insertId int64
 	sqlCreate := fmt.Sprintf("INSERT INTO %s (name) VALUES ($1) RETURNING id", tableUsers)
-	err := u.storage.Db.QueryRowContext(ctx, sqlCreate, user.Name).Scan(&insertId)
+	err := u.wms.Db.QueryRowContext(ctx, sqlCreate, user.Name).Scan(&insertId)
 	return insertId, err
 }
 
 func (u *Users) Update(ctx context.Context, user *model.User) (int64, error) {
 	sqlUpd := fmt.Sprintf("UPDATE %s SET name=$2 WHERE id=$1", tableUsers)
-	res, err := u.storage.Db.ExecContext(ctx, sqlUpd, user.Id, user.Name)
+	res, err := u.wms.Db.ExecContext(ctx, sqlUpd, user.Id, user.Name)
 	if err != nil {
 		return 0, err
 	}
@@ -95,7 +95,7 @@ func (u *Users) Delete(ctx context.Context, itemId int64) error {
 		return fmt.Errorf("unacceptable action. item id eq 0")
 	}
 	sqlDel := fmt.Sprintf("DELETE FROM %s WHERE id=$1", tableUsers)
-	_, err := u.storage.Db.ExecContext(ctx, sqlDel, itemId)
+	_, err := u.wms.Db.ExecContext(ctx, sqlDel, itemId)
 	if err != nil {
 		var pgErr *pq.Error
 		if errors.As(err, &pgErr) {
@@ -110,7 +110,7 @@ func (u *Users) Delete(ctx context.Context, itemId int64) error {
 
 func (u *Users) GetById(ctx context.Context, itemId int64) (*model.User, error) {
 	sqlUsr := fmt.Sprintf("SELECT id, name FROM %s WHERE id = $1", tableUsers)
-	row := u.storage.Db.QueryRowContext(ctx, sqlUsr, itemId)
+	row := u.wms.Db.QueryRowContext(ctx, sqlUsr, itemId)
 	newItem := model.User{}
 	err := row.Scan(&newItem.Id, &newItem.Name)
 	if err != nil {
@@ -122,7 +122,7 @@ func (u *Users) GetById(ctx context.Context, itemId int64) (*model.User, error) 
 func (u *Users) FindByName(ctx context.Context, itemName string) ([]model.User, error) {
 	users := make([]model.User, 0)
 	sql := fmt.Sprintf("SELECT id, name FROM %s WHERE name = $1", tableUsers)
-	rows, err := u.storage.Db.QueryContext(ctx, sql, itemName)
+	rows, err := u.wms.Db.QueryContext(ctx, sql, itemName)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func (u *Users) Suggest(ctx context.Context, text string, limit int) ([]model.Su
 	}
 
 	sqlSel := fmt.Sprintf("SELECT id, name FROM %s WHERE name ILIKE $1 LIMIT $2", tableUsers)
-	rows, err := u.storage.Db.QueryContext(ctx, sqlSel, text+"%", limit)
+	rows, err := u.wms.Db.QueryContext(ctx, sqlSel, text+"%", limit)
 	if err != nil {
 		return retVal, err
 	}

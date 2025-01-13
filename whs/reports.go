@@ -7,11 +7,11 @@ import (
 )
 
 type Reports struct {
-	storage *Storage
+	wms *Wms
 }
 
-func NewReports(s *Storage) *Reports {
-	return &Reports{storage: s}
+func NewReports(s *Wms) *Reports {
+	return &Reports{wms: s}
 }
 
 func (r *Reports) GetStockData(ctx context.Context) (*model.StockData, error) {
@@ -29,14 +29,13 @@ func (r *Reports) GetStockData(ctx context.Context) (*model.StockData, error) {
 		"LEFT JOIN zones z ON store.zone_id = z.id " +
 		"LEFT JOIN cells c ON store.cell_id = c.id " +
 		"ORDER BY p.name"
-	rows, err := r.storage.Db.QueryContext(ctx, sqlSel)
+	rows, err := r.wms.Db.QueryContext(ctx, sqlSel)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		row := model.RowStock{
-			RowId:    "",
 			Product:  model.Product{},
 			Quantity: 0,
 			Cells:    make([]cells.Cell, 0),
