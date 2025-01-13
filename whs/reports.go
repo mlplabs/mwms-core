@@ -2,7 +2,6 @@ package whs
 
 import (
 	"context"
-	"github.com/mlplabs/mwms-core/whs/cells"
 	"github.com/mlplabs/mwms-core/whs/model"
 )
 
@@ -38,9 +37,9 @@ func (r *Reports) GetStockData(ctx context.Context) (*model.StockData, error) {
 		row := model.RowStock{
 			Product:  model.Product{},
 			Quantity: 0,
-			Cells:    make([]cells.Cell, 0),
+			Cells:    make([]model.Cell, 0),
 		}
-		cell := cells.Cell{}
+		cell := model.Cell{}
 		err = rows.Scan(&row.Product.Id, &row.Product.Name, &row.Product.Manufacturer.Id, &row.Product.Manufacturer.Name, &row.Zone.Id, &row.Zone.Name, &cell.Id, &cell.Name, &row.Quantity)
 		if err != nil {
 			return nil, err

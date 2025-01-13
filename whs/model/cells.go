@@ -1,4 +1,4 @@
-package cells
+package model
 
 type Cell struct {
 	Id            int64

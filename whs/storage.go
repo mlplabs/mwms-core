@@ -3,9 +3,8 @@ package whs
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
-	"github.com/lib/pq"
-	"github.com/mlplabs/mwms-core/whs/cells"
 	"github.com/mlplabs/mwms-core/whs/model"
 )
 
@@ -17,129 +16,142 @@ func NewStorage(s *Wms) *Storage {
 	return &Storage{wms: s}
 }
 
-// GetRow отбирает из ячейки (cell) продукт (prod) в количестве (quantity)
+func (s *Storage) getCellInfo(ctx context.Context, cellId int64, tx *sql.Tx) (*model.Cell, error) {
+	sqlCell := "SELECT cs.id, cs.name, cs.whs_id, cs.zone_id FROM cells cs WHERE cs.id = $1"
+	c := model.Cell{}
+	row := tx.QueryRowContext(ctx, sqlCell, cellId)
+	err := row.Scan(c.Id, c.Name, c.WhsId, c.ZoneId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return &c, nil
+		}
+		return nil, err
+	}
+	return &c, nil
+}
+
+func (s *Storage) balanceControl(ctx context.Context, itemId int64, cellId int64, tx *sql.Tx) (bool, error) {
+	var balance int
+	sqlCtrl := "SELECT SUM(quantity) AS quantity " +
+		"FROM storage%d WHERE cell_id = $2 AND prod_id = $3 " +
+		"GROUP BY cell_id, prod_id " +
+		"HAVING SUM(quantity) < 0"
+	row := tx.QueryRowContext(ctx, sqlCtrl, cellId, itemId)
+	err := row.Scan(&balance)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
+	}
+	return false, fmt.Errorf("balance control failed %d", balance)
+}
+
+// GetItemFromCell отбирает из ячейки (cellId) продукт (itemId) в количестве (quantity)
 // Возвращает отобранное количество (quantity)
-func (s *Storage) GetRow(ctx context.Context, row *model.RowStorage, tx *sql.Tx) (int, error) {
-	var err error
-
-	if tx == nil {
-		tx, err = s.wms.Db.Begin()
-		if err != nil {
-			// не смогли начать транзакцию
-			return 0, err
-		}
-	}
-	dGetId := 0
-	dGetType := 0
-	sqlInsert := fmt.Sprintf("INSERT INTO wms%d (doc_id, doc_type, zone_id, cell_id, row_id, prod_id, quantity) VALUES ($1, $2, $3, $4)", row.CellSrc.WhsId)
-	_, err = tx.ExecContext(ctx, sqlInsert, dGetId, dGetType, row.CellSrc.ZoneId, row.CellSrc.Id, row.RowId, row.Product.Id, -1*row.Quantity)
+func (s *Storage) GetItemFromCell(ctx context.Context, itemId int64, cellId int64, quantity int) (int, error) {
+	tx, err := s.wms.Db.Begin()
 	if err != nil {
 		return 0, err
 	}
 
-	sqlQuant := fmt.Sprintf("SELECT SUM(quantity) AS quantity "+
-		"FROM wms%d WHERE zone_id = $1 AND cell_id = $2 AND prod_id = $3 "+
-		"GROUP BY zone_id, cell_id, prod_id "+
-		"HAVING SUM(quantity) < 0", row.CellSrc.WhsId)
-	rows, err := tx.QueryContext(ctx, sqlQuant, row.CellSrc.ZoneId, row.CellSrc.Id, row.Product.Id)
+	cell, err := s.getCellInfo(ctx, cellId, tx)
 	if err != nil {
-		// ошибка контроля
+		_ = tx.Rollback()
 		return 0, err
 	}
-	defer rows.Close()
-	// мы должны получить пустой запрос
-	if rows.Next() {
-		err = tx.Rollback()
-		if err != nil {
-			// ошибка отката... все очень плохо
-			return 0, err
-		}
+
+	sqlInsert := fmt.Sprintf("INSERT INTO storage%d (prod_id, zone_id, cell_id, quantity) VALUES ($1, $2, $3, $4)", cell.WhsId)
+	_, err = tx.Exec(sqlInsert, itemId, cell.ZoneId, cellId, -1*quantity)
+	if err != nil {
+		_ = tx.Rollback()
+		return 0, err
+	}
+
+	_, err = s.balanceControl(ctx, itemId, cellId, tx)
+	if err != nil {
+		_ = tx.Rollback()
+		return 0, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return 0, err
+	}
+	return quantity, nil
+}
+
+// PutItemToCell размещает в ячейку (CellId) продукт (ItemId) в количестве (Quantity)
+// Возвращает количество которое было размещено (Quantity)
+func (s *Storage) PutItemToCell(ctx context.Context, itemId int64, cellId int64, quantity int) (int, error) {
+	tx, err := s.wms.Db.Begin()
+	if err != nil {
+		return 0, err
+	}
+
+	cell, err := s.getCellInfo(ctx, cellId, tx)
+	if err != nil {
+		_ = tx.Rollback()
+		return 0, err
+	}
+
+	sqlIns := fmt.Sprintf("INSERT INTO storage%d (prod_id, zone_id, cell_id, quantity) VALUES ($1, $2, $3, $4)", cell.WhsId)
+	_, err = tx.ExecContext(ctx, sqlIns, itemId, cell.ZoneId, cellId, quantity)
+	if err != nil {
+		_ = tx.Rollback()
 		return 0, err
 	}
 	err = tx.Commit()
 	if err != nil {
 		return 0, err
 	}
-	return row.Quantity, nil
+	return quantity, nil
 }
-
-// PutRow размещает в ячейку (cell) продукт (prod) в количестве (quantity)
-// Возвращает количество которое было размещено (quantity)
-func (s *Storage) PutRow(ctx context.Context, row *model.RowStorage, tx *sql.Tx) (int, error) {
-	var err error
-
-	// TODO:
-	dGetId := 0
-	dGetType := 0
-	sqlIns := fmt.Sprintf("INSERT INTO wms%d (doc_id, doc_type, zone_id, cell_id, row_id, prod_id, quantity) VALUES ($1, $2, $3, $4, $5, $6, $7)", row.CellDst.WhsId)
-	if tx != nil {
-		_, err = tx.ExecContext(ctx, sqlIns, dGetId, dGetType, row.CellDst.ZoneId, row.CellDst.Id, row.RowId, row.Product.Id, row.Quantity)
-	} else {
-		_, err = s.wms.Db.ExecContext(ctx, sqlIns, dGetId, dGetType, row.CellDst.ZoneId, row.CellDst.Id, row.RowId, row.Product.Id, row.Quantity)
-	}
+func (s *Storage) MoveItemToCell(ctx context.Context, itemId int64, cellSrcId int64, cellDstId int64, quantity int) (int, error) {
+	tx, err := s.wms.Db.Begin()
 	if err != nil {
 		return 0, err
 	}
-	return row.Quantity, nil
-}
-func (s *Storage) MoveRow(ctx context.Context, row *model.RowStorage, tx *sql.Tx) error {
-	// TODO: cellSrc.WhsId <> cellDst.WhsId - временной разрыв или виртуальное перемещение
 
-	_, err := s.GetRow(ctx, row, tx)
+	cellSrc, err := s.getCellInfo(ctx, cellSrcId, tx)
 	if err != nil {
-		return err
+		_ = tx.Rollback()
+		return 0, err
 	}
-	_, err = s.PutRow(ctx, row, tx)
-	if err == nil {
-		return err
-	}
-	return nil
-}
 
-// Quantity возвращает количество продуктов на св ячейке
-func (s *Storage) Quantity(ctx context.Context, whsId int, cell *cells.Cell, tx *sql.Tx) (map[int]int, error) {
-	var zoneId, cellId, prodId, quantity int
-	res := make(map[int]int)
-
-	sqlQuantity := fmt.Sprintf("SELECT zone_id, cell_id, prod_id, SUM(quantity) AS quantity "+
-		"FROM wms%d WHERE zone_id = $1 AND cell_id = $2 "+
-		"GROUP BY zone_id, cell_id, prod_id "+
-		"HAVING SUM(quantity) <> 0 %s", whsId, "")
-
-	var err error
-	var rows *sql.Rows
-
-	if tx != nil {
-		rows, err = tx.QueryContext(ctx, sqlQuantity, cell.ZoneId, cell.Id)
-	} else {
-		rows, err = s.wms.Db.QueryContext(ctx, sqlQuantity, cell.ZoneId, cell.Id)
-	}
+	cellDst, err := s.getCellInfo(ctx, cellDstId, tx)
 	if err != nil {
-		return nil, err
+		_ = tx.Rollback()
+		return 0, err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		err = rows.Scan(&zoneId, &cellId, &prodId, &quantity)
-		if err != nil {
-			return nil, err
-		}
-		res[prodId] = quantity
+	if cellDst.WhsId != cellSrc.WhsId {
+		// TODO: cellSrc.WhsId <> cellDst.WhsId - временной разрыв или виртуальное перемещение
+		return 0, fmt.Errorf("межскладское перемещение пока не реализовано(")
 	}
-	return res, nil
-}
 
-// BulkChangeSzCells устанавливает весогабаритные характеристики для массива ячеек
-func (s *Storage) BulkChangeSzCells(ctx context.Context, cells []cells.Cell, sz SpecificSize) (int64, error) {
-	var ids []int64
+	sqlInsertSrc := fmt.Sprintf("INSERT INTO storage%d (prod_id, zone_id, cell_id, quantity) VALUES ($1, $2, $3, $4)", cellSrc.WhsId)
+	sqlInsertDst := fmt.Sprintf("INSERT INTO storage%d (prod_id, zone_id, cell_id, quantity) VALUES ($1, $2, $3, $4)", cellDst.WhsId)
 
-	for _, c := range cells {
-		ids = append(ids, c.Id)
+	_, err = tx.Exec(sqlInsertSrc, itemId, cellSrc.ZoneId, cellSrcId, -1*quantity)
+	if err != nil {
+		_ = tx.Rollback()
+		return 0, err
 	}
-	sqlBulkUpdate := "UPDATE cells SET sz_length=$2, sz_width=$3, sz_height=$4, sz_volume=$5, sz_uf_volume=$6, sz_weight=$7 WHERE id = ANY($1)"
-	res, err := s.wms.Db.ExecContext(ctx, sqlBulkUpdate, pq.Array(ids), sz.Length, sz.Width, sz.Height, sz.Volume, sz.UsefulVolume, sz.Weight)
+	_, err = tx.Exec(sqlInsertDst, itemId, cellDst.ZoneId, cellDstId, -1*quantity)
+	if err != nil {
+		_ = tx.Rollback()
+		return 0, err
+	}
+	_, err = s.balanceControl(ctx, itemId, cellSrcId, tx)
+	if err != nil {
+		_ = tx.Rollback()
+		return 0, err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return 0, err
 	}
-	return res.RowsAffected()
+	return quantity, nil
 }
