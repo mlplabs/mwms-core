@@ -9,17 +9,17 @@ import (
 	"github.com/mlplabs/mwms-core/whs/model"
 )
 
-type DataStorage struct {
+type Storage struct {
 	wms *Wms
 }
 
-func NewDataStorage(s *Wms) *DataStorage {
-	return &DataStorage{wms: s}
+func NewStorage(s *Wms) *Storage {
+	return &Storage{wms: s}
 }
 
 // GetRow отбирает из ячейки (cell) продукт (prod) в количестве (quantity)
 // Возвращает отобранное количество (quantity)
-func (s *DataStorage) GetRow(ctx context.Context, row *model.RowStorage, tx *sql.Tx) (int, error) {
+func (s *Storage) GetRow(ctx context.Context, row *model.RowStorage, tx *sql.Tx) (int, error) {
 	var err error
 
 	if tx == nil {
@@ -65,7 +65,7 @@ func (s *DataStorage) GetRow(ctx context.Context, row *model.RowStorage, tx *sql
 
 // PutRow размещает в ячейку (cell) продукт (prod) в количестве (quantity)
 // Возвращает количество которое было размещено (quantity)
-func (s *DataStorage) PutRow(ctx context.Context, row *model.RowStorage, tx *sql.Tx) (int, error) {
+func (s *Storage) PutRow(ctx context.Context, row *model.RowStorage, tx *sql.Tx) (int, error) {
 	var err error
 
 	// TODO:
@@ -82,7 +82,7 @@ func (s *DataStorage) PutRow(ctx context.Context, row *model.RowStorage, tx *sql
 	}
 	return row.Quantity, nil
 }
-func (s *DataStorage) MoveRow(ctx context.Context, row *model.RowStorage, tx *sql.Tx) error {
+func (s *Storage) MoveRow(ctx context.Context, row *model.RowStorage, tx *sql.Tx) error {
 	// TODO: cellSrc.WhsId <> cellDst.WhsId - временной разрыв или виртуальное перемещение
 
 	_, err := s.GetRow(ctx, row, tx)
@@ -97,7 +97,7 @@ func (s *DataStorage) MoveRow(ctx context.Context, row *model.RowStorage, tx *sq
 }
 
 // Quantity возвращает количество продуктов на св ячейке
-func (s *DataStorage) Quantity(ctx context.Context, whsId int, cell *cells.Cell, tx *sql.Tx) (map[int]int, error) {
+func (s *Storage) Quantity(ctx context.Context, whsId int, cell *cells.Cell, tx *sql.Tx) (map[int]int, error) {
 	var zoneId, cellId, prodId, quantity int
 	res := make(map[int]int)
 
@@ -130,7 +130,7 @@ func (s *DataStorage) Quantity(ctx context.Context, whsId int, cell *cells.Cell,
 }
 
 // BulkChangeSzCells устанавливает весогабаритные характеристики для массива ячеек
-func (s *DataStorage) BulkChangeSzCells(ctx context.Context, cells []cells.Cell, sz SpecificSize) (int64, error) {
+func (s *Storage) BulkChangeSzCells(ctx context.Context, cells []cells.Cell, sz SpecificSize) (int64, error) {
 	var ids []int64
 
 	for _, c := range cells {

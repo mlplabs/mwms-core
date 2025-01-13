@@ -90,7 +90,7 @@ var (
 	DefaultSuggestionLimit int = 10
 )
 
-func NewStorage(db *sql.DB) *Wms {
+func NewWms(db *sql.DB) *Wms {
 	return &Wms{
 		Db: db,
 	}
