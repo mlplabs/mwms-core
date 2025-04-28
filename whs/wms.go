@@ -1,7 +1,10 @@
 package whs
 
 import (
+	"context"
 	"database/sql"
+	"errors"
+	"github.com/mlplabs/mwms-core/whs/model"
 )
 
 // SpecificSize структура весогабаритных характеристик (см/см3/кг)
@@ -55,10 +58,34 @@ func NewWms(db *sql.DB) *Wms {
 	}
 }
 
-func (s *Wms) GetDbUser() string {
-	return s.dbUser
+func (w *Wms) GetDbUser() string {
+	return w.dbUser
 }
 
-func (s *Wms) Query(query string, args ...interface{}) (*sql.Rows, error) {
-	return s.Db.Query(query, args...)
+func (w *Wms) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	return w.Db.Query(query, args...)
+}
+
+func (w *Wms) GetCellInfo(ctx context.Context, cellId int64, tx *sql.Tx) (*model.Cell, error) {
+	var err error
+	if tx == nil {
+		tx, err = w.Db.Begin()
+		if err != nil {
+			return nil, err
+		}
+	}
+	sqlCell := "SELECT cs.id, cs.name, cs.whs_id, cs.zone_id, cs.passage_id, cs.rack_id, cs.floor FROM cells cs WHERE cs.id = $1"
+	c := model.Cell{}
+	row := tx.QueryRowContext(ctx, sqlCell, cellId)
+	err = row.Scan(&c.Id, &c.Name, &c.WhsId, &c.ZoneId, &c.PassageId, &c.RackId, &c.Floor)
+	if c.Name == "" {
+		c.Name = c.GetNumericView()
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return &c, nil
+		}
+		return nil, err
+	}
+	return &c, nil
 }

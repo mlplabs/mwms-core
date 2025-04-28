@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/mlplabs/mwms-core/whs/model"
 )
 
 type Storage struct {
@@ -16,26 +15,12 @@ func NewStorage(s *Wms) *Storage {
 	return &Storage{wms: s}
 }
 
-func (s *Storage) getCellInfo(ctx context.Context, cellId int64, tx *sql.Tx) (*model.Cell, error) {
-	sqlCell := "SELECT cs.id, cs.name, cs.whs_id, cs.zone_id FROM cells cs WHERE cs.id = $1"
-	c := model.Cell{}
-	row := tx.QueryRowContext(ctx, sqlCell, cellId)
-	err := row.Scan(c.Id, c.Name, c.WhsId, c.ZoneId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return &c, nil
-		}
-		return nil, err
-	}
-	return &c, nil
-}
-
-func (s *Storage) balanceControl(ctx context.Context, itemId int64, cellId int64, tx *sql.Tx) (bool, error) {
+func (s *Storage) balanceControl(ctx context.Context, whsId int64, itemId int64, cellId int64, tx *sql.Tx) (bool, error) {
 	var balance int
-	sqlCtrl := "SELECT SUM(quantity) AS quantity " +
-		"FROM storage%d WHERE cell_id = $2 AND prod_id = $3 " +
-		"GROUP BY cell_id, prod_id " +
-		"HAVING SUM(quantity) < 0"
+	sqlCtrl := fmt.Sprintf("SELECT SUM(quantity) AS quantity "+
+		"FROM storage%d WHERE cell_id = $1 AND prod_id = $2 "+
+		"GROUP BY cell_id, prod_id "+
+		"HAVING SUM(quantity) < 0", whsId)
 	row := tx.QueryRowContext(ctx, sqlCtrl, cellId, itemId)
 	err := row.Scan(&balance)
 	if err != nil {
@@ -55,7 +40,7 @@ func (s *Storage) GetItemFromCell(ctx context.Context, itemId int64, cellId int6
 		return 0, err
 	}
 
-	cell, err := s.getCellInfo(ctx, cellId, tx)
+	cell, err := s.wms.GetCellInfo(ctx, cellId, tx)
 	if err != nil {
 		_ = tx.Rollback()
 		return 0, err
@@ -68,7 +53,7 @@ func (s *Storage) GetItemFromCell(ctx context.Context, itemId int64, cellId int6
 		return 0, err
 	}
 
-	_, err = s.balanceControl(ctx, itemId, cellId, tx)
+	_, err = s.balanceControl(ctx, cell.WhsId, itemId, cellId, tx)
 	if err != nil {
 		_ = tx.Rollback()
 		return 0, err
@@ -89,7 +74,7 @@ func (s *Storage) PutItemToCell(ctx context.Context, itemId int64, cellId int64,
 		return 0, err
 	}
 
-	cell, err := s.getCellInfo(ctx, cellId, tx)
+	cell, err := s.wms.GetCellInfo(ctx, cellId, tx)
 	if err != nil {
 		_ = tx.Rollback()
 		return 0, err
@@ -113,13 +98,13 @@ func (s *Storage) MoveItemToCell(ctx context.Context, itemId int64, cellSrcId in
 		return 0, err
 	}
 
-	cellSrc, err := s.getCellInfo(ctx, cellSrcId, tx)
+	cellSrc, err := s.wms.GetCellInfo(ctx, cellSrcId, tx)
 	if err != nil {
 		_ = tx.Rollback()
 		return 0, err
 	}
 
-	cellDst, err := s.getCellInfo(ctx, cellDstId, tx)
+	cellDst, err := s.wms.GetCellInfo(ctx, cellDstId, tx)
 	if err != nil {
 		_ = tx.Rollback()
 		return 0, err
@@ -138,12 +123,12 @@ func (s *Storage) MoveItemToCell(ctx context.Context, itemId int64, cellSrcId in
 		_ = tx.Rollback()
 		return 0, err
 	}
-	_, err = tx.Exec(sqlInsertDst, itemId, cellDst.ZoneId, cellDstId, -1*quantity)
+	_, err = tx.Exec(sqlInsertDst, itemId, cellDst.ZoneId, cellDstId, quantity)
 	if err != nil {
 		_ = tx.Rollback()
 		return 0, err
 	}
-	_, err = s.balanceControl(ctx, itemId, cellSrcId, tx)
+	_, err = s.balanceControl(ctx, cellSrc.WhsId, itemId, cellSrcId, tx)
 	if err != nil {
 		_ = tx.Rollback()
 		return 0, err

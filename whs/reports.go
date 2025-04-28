@@ -18,7 +18,7 @@ func (r *Reports) GetStockData(ctx context.Context) (*model.StockData, error) {
 	sqlSel := "SELECT store.prod_id AS product_id, coalesce(p.name, '<unnamed>') AS product_name, " +
 		"       coalesce(m.id, 0) AS manufacturer_id, coalesce(m.name, '<unnamed>') AS manufacturer_name, " +
 		"       store.zone_id, coalesce(z.name, '<unnamed>') AS zone_name, " +
-		"       store.cell_id, c.name AS cell_name, " +
+		"       store.cell_id, " +
 		"       store.quantity " +
 		"FROM (SELECT s.prod_id, s.zone_id, s.cell_id, SUM(s.quantity) AS quantity " +
 		"               FROM storage1 s " +
@@ -39,12 +39,17 @@ func (r *Reports) GetStockData(ctx context.Context) (*model.StockData, error) {
 			Quantity: 0,
 			Cells:    make([]model.Cell, 0),
 		}
-		cell := model.Cell{}
-		err = rows.Scan(&row.Product.Id, &row.Product.Name, &row.Product.Manufacturer.Id, &row.Product.Manufacturer.Name, &row.Zone.Id, &row.Zone.Name, &cell.Id, &cell.Name, &row.Quantity)
+		cellId := int64(0)
+		err = rows.Scan(&row.Product.Id, &row.Product.Name, &row.Product.Manufacturer.Id, &row.Product.Manufacturer.Name, &row.Zone.Id, &row.Zone.Name, &cellId, &row.Quantity)
 		if err != nil {
 			return nil, err
 		}
-		row.Cells = append(row.Cells, cell)
+		cell, err := r.wms.GetCellInfo(ctx, cellId, nil)
+		if err != nil {
+			return nil, err
+		}
+		cell.SetName("")
+		row.Cells = append(row.Cells, *cell)
 		retVal = append(retVal, row)
 	}
 
