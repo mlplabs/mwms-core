@@ -5,15 +5,7 @@ import (
 	"github.com/mlplabs/mwms-core/whs/model"
 )
 
-type Reports struct {
-	wms *Wms
-}
-
-func NewReports(s *Wms) *Reports {
-	return &Reports{wms: s}
-}
-
-func (r *Reports) GetStockData(ctx context.Context) (*model.StockData, error) {
+func (s *Storage) ReportStocks(ctx context.Context) (*model.StockData, error) {
 	retVal := make([]model.RowStock, 0)
 	sqlSel := "SELECT store.prod_id AS product_id, coalesce(p.name, '<unnamed>') AS product_name, " +
 		"       coalesce(m.id, 0) AS manufacturer_id, coalesce(m.name, '<unnamed>') AS manufacturer_name, " +
@@ -28,7 +20,7 @@ func (r *Reports) GetStockData(ctx context.Context) (*model.StockData, error) {
 		"LEFT JOIN zones z ON store.zone_id = z.id " +
 		"LEFT JOIN cells c ON store.cell_id = c.id " +
 		"ORDER BY p.name"
-	rows, err := r.wms.Db.QueryContext(ctx, sqlSel)
+	rows, err := s.wms.Db.QueryContext(ctx, sqlSel)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +36,7 @@ func (r *Reports) GetStockData(ctx context.Context) (*model.StockData, error) {
 		if err != nil {
 			return nil, err
 		}
-		cell, err := r.wms.GetCellInfo(ctx, cellId, nil)
+		cell, err := s.wms.GetCellInfo(ctx, cellId, nil)
 		if err != nil {
 			return nil, err
 		}

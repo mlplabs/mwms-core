@@ -10,18 +10,10 @@ import (
 
 const tableManufacturers = "manufacturers"
 
-type Manufacturers struct {
-	wms *Wms
-}
-
-func NewManufacturers(s *Wms) *Manufacturers {
-	return &Manufacturers{wms: s}
-}
-
-func (m *Manufacturers) Get(ctx context.Context) ([]model.Manufacturer, error) {
+func (s *Storage) GetManufacturers(ctx context.Context) ([]model.Manufacturer, error) {
 	items := make([]model.Manufacturer, 0)
 	sqlSel := fmt.Sprintf("SELECT id, name FROM %s ORDER BY name ASC", tableManufacturers)
-	rows, err := m.wms.Db.QueryContext(ctx, sqlSel)
+	rows, err := s.wms.Db.QueryContext(ctx, sqlSel)
 	if err != nil {
 		return items, err
 	}
@@ -35,7 +27,7 @@ func (m *Manufacturers) Get(ctx context.Context) ([]model.Manufacturer, error) {
 	return items, nil
 }
 
-func (m *Manufacturers) GetItems(ctx context.Context, offset int, limit int, search string) ([]model.Manufacturer, int64, error) {
+func (s *Storage) GetManufacturersItems(ctx context.Context, offset int, limit int, search string) ([]model.Manufacturer, int64, error) {
 	var totalCount int64
 	var sqlCond string
 	items := make([]model.Manufacturer, 0)
@@ -52,7 +44,7 @@ func (m *Manufacturers) GetItems(ctx context.Context, offset int, limit int, sea
 
 	sqlSel := fmt.Sprintf("SELECT id, name FROM %s %s ORDER BY name ASC", tableManufacturers, sqlCond)
 
-	rows, err := m.wms.Db.QueryContext(ctx, sqlSel+" LIMIT $1 OFFSET $2", args...)
+	rows, err := s.wms.Db.QueryContext(ctx, sqlSel+" LIMIT $1 OFFSET $2", args...)
 	if err != nil {
 		return nil, totalCount, err
 	}
@@ -65,23 +57,23 @@ func (m *Manufacturers) GetItems(ctx context.Context, offset int, limit int, sea
 	}
 
 	sqlCount := fmt.Sprintf("SELECT COUNT(*) as count FROM ( %s ) sub", sqlSel)
-	err = m.wms.Db.QueryRowContext(ctx, sqlCount).Scan(&totalCount)
+	err = s.wms.Db.QueryRowContext(ctx, sqlCount).Scan(&totalCount)
 	if err != nil {
 		return nil, totalCount, err
 	}
 	return items, totalCount, nil
 }
 
-func (m *Manufacturers) Create(ctx context.Context, mnf *model.Manufacturer) (int64, error) {
+func (s *Storage) CreateManufacturer(ctx context.Context, mnf *model.Manufacturer) (int64, error) {
 	var insertId int64
 	sqlCreate := fmt.Sprintf("INSERT INTO %s (name) VALUES ($1) RETURNING id", tableManufacturers)
-	err := m.wms.Db.QueryRowContext(ctx, sqlCreate, mnf.Name).Scan(&insertId)
+	err := s.wms.Db.QueryRowContext(ctx, sqlCreate, mnf.Name).Scan(&insertId)
 	return insertId, err
 }
 
-func (m *Manufacturers) Update(ctx context.Context, mnf *model.Manufacturer) (int64, error) {
+func (s *Storage) UpdateManufacturer(ctx context.Context, mnf *model.Manufacturer) (int64, error) {
 	sqlUpd := fmt.Sprintf("UPDATE %s SET name=$2 WHERE id=$1", tableManufacturers)
-	res, err := m.wms.Db.ExecContext(ctx, sqlUpd, mnf.Id, mnf.Name)
+	res, err := s.wms.Db.ExecContext(ctx, sqlUpd, mnf.Id, mnf.Name)
 	if err != nil {
 		return 0, err
 	}
@@ -90,12 +82,12 @@ func (m *Manufacturers) Update(ctx context.Context, mnf *model.Manufacturer) (in
 	}
 	return mnf.Id, nil
 }
-func (m *Manufacturers) Delete(ctx context.Context, itemId int64) error {
+func (s *Storage) DeleteManufacturer(ctx context.Context, itemId int64) error {
 	if itemId == 0 {
 		return fmt.Errorf("unacceptable action. item id eq 0")
 	}
 	sqlDel := fmt.Sprintf("DELETE FROM %s WHERE id=$1", tableManufacturers)
-	_, err := m.wms.Db.ExecContext(ctx, sqlDel, itemId)
+	_, err := s.wms.Db.ExecContext(ctx, sqlDel, itemId)
 	if err != nil {
 		var pgErr *pq.Error
 		if errors.As(err, &pgErr) {
@@ -107,9 +99,9 @@ func (m *Manufacturers) Delete(ctx context.Context, itemId int64) error {
 	}
 	return nil
 }
-func (m *Manufacturers) GetById(ctx context.Context, itemId int64) (*model.Manufacturer, error) {
+func (s *Storage) GetManufacturerById(ctx context.Context, itemId int64) (*model.Manufacturer, error) {
 	sqlUsr := fmt.Sprintf("SELECT id, name FROM %s WHERE id = $1", tableManufacturers)
-	row := m.wms.Db.QueryRowContext(ctx, sqlUsr, itemId)
+	row := s.wms.Db.QueryRowContext(ctx, sqlUsr, itemId)
 	newItem := model.Manufacturer{}
 	err := row.Scan(&newItem.Id, &newItem.Name)
 	if err != nil {
@@ -118,10 +110,10 @@ func (m *Manufacturers) GetById(ctx context.Context, itemId int64) (*model.Manuf
 	return &newItem, nil
 }
 
-func (m *Manufacturers) FindByName(ctx context.Context, itemName string) ([]model.Manufacturer, error) {
+func (s *Storage) FindManufacturersByName(ctx context.Context, itemName string) ([]model.Manufacturer, error) {
 	items := make([]model.Manufacturer, 0)
 	sql := fmt.Sprintf("SELECT id, name FROM %s WHERE name = $1", tableManufacturers)
-	rows, err := m.wms.Db.QueryContext(ctx, sql, itemName)
+	rows, err := s.wms.Db.QueryContext(ctx, sql, itemName)
 	if err != nil {
 		return nil, err
 	}
@@ -137,14 +129,14 @@ func (m *Manufacturers) FindByName(ctx context.Context, itemName string) ([]mode
 	return items, nil
 }
 
-func (m *Manufacturers) Suggest(ctx context.Context, text string, limit int) ([]model.Suggestion, error) {
+func (s *Storage) ManufacturersSuggest(ctx context.Context, text string, limit int) ([]model.Suggestion, error) {
 	retVal := make([]model.Suggestion, 0)
 	if limit == 0 {
 		limit = DefaultSuggestionLimit
 	}
 
 	sqlSel := fmt.Sprintf("SELECT id, name FROM %s WHERE name ILIKE $1 LIMIT $2", tableManufacturers)
-	rows, err := m.wms.Db.QueryContext(ctx, sqlSel, text+"%", limit)
+	rows, err := s.wms.Db.QueryContext(ctx, sqlSel, text+"%", limit)
 	if err != nil {
 		return retVal, err
 	}

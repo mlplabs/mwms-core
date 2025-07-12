@@ -10,20 +10,12 @@ import (
 
 const tableBarcodes = "barcodes"
 
-type Barcodes struct {
-	wms *Wms
-}
-
-func NewBarcodes(s *Wms) *Barcodes {
-	return &Barcodes{wms: s}
-}
-
-// Get returns a list of barcodes
-func (b *Barcodes) Get(ctx context.Context) ([]model.Barcode, error) {
+// GetBarcodes returns a list of barcodes
+func (s *Storage) GetBarcodes(ctx context.Context) ([]model.Barcode, error) {
 	items := make([]model.Barcode, 0)
 	sqlSel := fmt.Sprintf("SELECT id, name, barcode_type, owner_id, owner_ref FROM %s ORDER BY name ASC", tableBarcodes)
 
-	rows, err := b.wms.Db.QueryContext(ctx, sqlSel)
+	rows, err := s.wms.Db.QueryContext(ctx, sqlSel)
 	if err != nil {
 		return items, err
 	}
@@ -37,8 +29,8 @@ func (b *Barcodes) Get(ctx context.Context) ([]model.Barcode, error) {
 	return items, nil
 }
 
-// GetItems returns a list of all barcodes
-func (b *Barcodes) GetItems(ctx context.Context, offset int, limit int) ([]model.Barcode, int64, error) {
+// GetBarcodesItems returns a list of all barcodes
+func (s *Storage) GetBarcodesItems(ctx context.Context, offset int, limit int) ([]model.Barcode, int64, error) {
 	var totalCount int64
 	items := make([]model.Barcode, 0)
 
@@ -53,7 +45,7 @@ func (b *Barcodes) GetItems(ctx context.Context, offset int, limit int) ([]model
 
 	sqlSel := fmt.Sprintf("SELECT id, name, barcode_type, owner_id, owner_ref FROM %s %s ORDER BY name ASC", tableBarcodes, sqlCond)
 
-	rows, err := b.wms.Db.QueryContext(ctx, sqlSel+" LIMIT $1 OFFSET $2", args...)
+	rows, err := s.wms.Db.QueryContext(ctx, sqlSel+" LIMIT $1 OFFSET $2", args...)
 	if err != nil {
 		return items, totalCount, err
 	}
@@ -66,15 +58,15 @@ func (b *Barcodes) GetItems(ctx context.Context, offset int, limit int) ([]model
 	}
 
 	sqlCount := fmt.Sprintf("SELECT COUNT(*) as count FROM ( %s ) sub", sqlSel)
-	err = b.wms.Db.QueryRowContext(ctx, sqlCount).Scan(&totalCount)
+	err = s.wms.Db.QueryRowContext(ctx, sqlCount).Scan(&totalCount)
 	if err != nil {
 		return items, totalCount, err
 	}
 	return items, totalCount, nil
 }
 
-// GetItemsByOwner returns a list of barcodes by owner
-func (b *Barcodes) GetItemsByOwner(ctx context.Context, offset int, limit int, ownerId int64, ownerRef string) ([]model.Barcode, int64, error) {
+// GetBarcodesItemsByOwner returns a list of barcodes by owner
+func (s *Storage) GetBarcodesItemsByOwner(ctx context.Context, offset int, limit int, ownerId int64, ownerRef string) ([]model.Barcode, int64, error) {
 	var totalCount int64
 	items := make([]model.Barcode, 0)
 
@@ -91,7 +83,7 @@ func (b *Barcodes) GetItemsByOwner(ctx context.Context, offset int, limit int, o
 
 	sqlSel := fmt.Sprintf("SELECT id, name, barcode_type, owner_id, owner_ref FROM %s %s ORDER BY name ASC", tableBarcodes, sqlCond)
 
-	rows, err := b.wms.Db.QueryContext(ctx, sqlSel+" LIMIT $3 OFFSET $4", args...)
+	rows, err := s.wms.Db.QueryContext(ctx, sqlSel+" LIMIT $3 OFFSET $4", args...)
 	if err != nil {
 		return items, totalCount, err
 	}
@@ -104,26 +96,26 @@ func (b *Barcodes) GetItemsByOwner(ctx context.Context, offset int, limit int, o
 	}
 
 	sqlCount := fmt.Sprintf("SELECT COUNT(*) as count FROM ( %s ) sub", sqlSel)
-	err = b.wms.Db.QueryRow(sqlCount, args[:2]...).Scan(&totalCount)
+	err = s.wms.Db.QueryRow(sqlCount, args[:2]...).Scan(&totalCount)
 	if err != nil {
 		return items, totalCount, err
 	}
 	return items, totalCount, nil
 }
 
-func (b *Barcodes) Create(ctx context.Context, bc *model.Barcode) (int64, error) {
+func (s *Storage) CreateBarcode(ctx context.Context, bc *model.Barcode) (int64, error) {
 	var insertId int64
 	sqlCreate := fmt.Sprintf("INSERT INTO %s (name, barcode_type, owner_id, owner_ref) VALUES ($1, $2, $3, $4) RETURNING id", tableBarcodes)
-	err := b.wms.Db.QueryRowContext(ctx, sqlCreate, bc.Name, bc.Type, bc.OwnerId, bc.OwnerRef).Scan(&insertId)
+	err := s.wms.Db.QueryRowContext(ctx, sqlCreate, bc.Name, bc.Type, bc.OwnerId, bc.OwnerRef).Scan(&insertId)
 	if err != nil {
 		return insertId, err
 	}
 	return insertId, nil
 }
 
-func (b *Barcodes) Update(ctx context.Context, bc *model.Barcode) (int64, error) {
+func (s *Storage) UpdateBarcode(ctx context.Context, bc *model.Barcode) (int64, error) {
 	sqlUpd := fmt.Sprintf("UPDATE %s SET name=$2, barcode_type=$3, owner_id=$4, owner_ref=$5 WHERE id=$1", tableBarcodes)
-	res, err := b.wms.Db.ExecContext(ctx, sqlUpd, bc.Id, bc.Name, bc.Type, bc.OwnerId, bc.OwnerRef)
+	res, err := s.wms.Db.ExecContext(ctx, sqlUpd, bc.Id, bc.Name, bc.Type, bc.OwnerId, bc.OwnerRef)
 	if err != nil {
 		return 0, err
 	}
@@ -133,12 +125,12 @@ func (b *Barcodes) Update(ctx context.Context, bc *model.Barcode) (int64, error)
 	return bc.Id, nil
 }
 
-func (b *Barcodes) Delete(ctx context.Context, itemId int64) error {
+func (s *Storage) DeleteBarcode(ctx context.Context, itemId int64) error {
 	if itemId == 0 {
 		return fmt.Errorf("unacceptable action. item id eq 0")
 	}
 	sqlDel := fmt.Sprintf("DELETE FROM %s WHERE id=$1", tableBarcodes)
-	_, err := b.wms.Db.ExecContext(ctx, sqlDel, itemId)
+	_, err := s.wms.Db.ExecContext(ctx, sqlDel, itemId)
 	if err != nil {
 		var pgErr *pq.Error
 		if errors.As(err, &pgErr) {
@@ -151,9 +143,9 @@ func (b *Barcodes) Delete(ctx context.Context, itemId int64) error {
 	return nil
 }
 
-func (b *Barcodes) GetById(ctx context.Context, itemId int64) (*model.Barcode, error) {
+func (s *Storage) GetBarcodeById(ctx context.Context, itemId int64) (*model.Barcode, error) {
 	sqlUsr := fmt.Sprintf("SELECT id, name, barcode_type, owner_id, owner_ref FROM %s WHERE id = $1", tableBarcodes)
-	row := b.wms.Db.QueryRowContext(ctx, sqlUsr, itemId)
+	row := s.wms.Db.QueryRowContext(ctx, sqlUsr, itemId)
 	bc := model.Barcode{}
 	err := row.Scan(&bc.Id, &bc.Name, &bc.Type, &bc.OwnerId, &bc.OwnerRef)
 	if err != nil {
@@ -162,10 +154,10 @@ func (b *Barcodes) GetById(ctx context.Context, itemId int64) (*model.Barcode, e
 	return &bc, nil
 }
 
-func (b *Barcodes) FindByName(ctx context.Context, itemName string) ([]model.Barcode, error) {
+func (s *Storage) FindBarcodesByName(ctx context.Context, itemName string) ([]model.Barcode, error) {
 	items := make([]model.Barcode, 0)
 	sql := fmt.Sprintf("SELECT id, name, barcode_type, owner_id, owner_ref FROM %s WHERE name = $1", tableBarcodes)
-	rows, err := b.wms.Db.QueryContext(ctx, sql, itemName)
+	rows, err := s.wms.Db.QueryContext(ctx, sql, itemName)
 	if err != nil {
 		return nil, err
 	}
@@ -181,11 +173,11 @@ func (b *Barcodes) FindByName(ctx context.Context, itemName string) ([]model.Bar
 	return items, nil
 }
 
-// FindByOwnerId returns a list of barcodes for the product (owner)
-func (b *Barcodes) FindByOwnerId(ctx context.Context, ownerId int64, ownerRef string) ([]model.Barcode, error) {
+// FindBarcodesByOwnerId returns a list of barcodes for the product (owner)
+func (s *Storage) FindBarcodesByOwnerId(ctx context.Context, ownerId int64, ownerRef string) ([]model.Barcode, error) {
 	retBc := make([]model.Barcode, 0)
 	sqlSel := `SELECT b.id, b.name, b.barcode_type, b.owner_id FROM barcodes b WHERE b.owner_id = $1 AND b.owner_ref = $2`
-	rows, err := b.wms.Db.QueryContext(ctx, sqlSel, ownerId, ownerRef)
+	rows, err := s.wms.Db.QueryContext(ctx, sqlSel, ownerId, ownerRef)
 	if err != nil {
 		return nil, err
 	}
@@ -201,14 +193,14 @@ func (b *Barcodes) FindByOwnerId(ctx context.Context, ownerId int64, ownerRef st
 	return retBc, nil
 }
 
-func (b *Barcodes) Suggest(ctx context.Context, text string, limit int) ([]model.Suggestion, error) {
+func (s *Storage) BarcodesSuggest(ctx context.Context, text string, limit int) ([]model.Suggestion, error) {
 	retVal := make([]model.Suggestion, 0)
 	if limit == 0 {
 		limit = DefaultSuggestionLimit
 	}
 
 	sqlSel := fmt.Sprintf("SELECT id, name FROM %s WHERE name ILIKE $1 LIMIT $2", tableBarcodes)
-	rows, err := b.wms.Db.QueryContext(ctx, sqlSel, text+"%", limit)
+	rows, err := s.wms.Db.QueryContext(ctx, sqlSel, text+"%", limit)
 	if err != nil {
 		return retVal, err
 	}
@@ -225,7 +217,7 @@ func (b *Barcodes) Suggest(ctx context.Context, text string, limit int) ([]model
 	return retVal, err
 }
 
-func (b *Barcodes) GetBarcodeTypes(ctx context.Context) ([]model.BarcodeType, error) {
+func (s *Storage) GetBarcodeTypes(ctx context.Context) ([]model.BarcodeType, error) {
 	bc := make([]model.BarcodeType, 0)
 	bc = append(bc, model.BarcodeType{Id: BarcodeTypeUnknown, Name: "-"})
 	bc = append(bc, model.BarcodeType{Id: BarcodeTypeEAN13, Name: "EAN13"})
